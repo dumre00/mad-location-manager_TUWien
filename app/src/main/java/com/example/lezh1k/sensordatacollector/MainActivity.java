@@ -13,11 +13,6 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.preference.PreferenceManager;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.appcompat.app.AppCompatActivity;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Menu;
@@ -29,6 +24,12 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
 import com.elvishew.xlog.LogLevel;
 import com.elvishew.xlog.XLog;
 import com.elvishew.xlog.printer.AndroidPrinter;
@@ -36,15 +37,6 @@ import com.elvishew.xlog.printer.Printer;
 import com.elvishew.xlog.printer.file.FilePrinter;
 import com.elvishew.xlog.printer.file.backup.FileSizeBackupStrategy;
 import com.elvishew.xlog.printer.file.naming.FileNameGenerator;
-import mad.location.manager.lib.Commons.Utils;
-import mad.location.manager.lib.Interfaces.ILogger;
-import mad.location.manager.lib.Interfaces.LocationServiceInterface;
-import mad.location.manager.lib.Loggers.GeohashRTFilter;
-import mad.location.manager.lib.SensorAux.SensorCalibrator;
-import mad.location.manager.lib.Services.KalmanLocationService;
-import mad.location.manager.lib.Services.ServicesHelper;
-import mad.location.manager.lib.Services.Settings;
-
 import com.example.lezh1k.sensordatacollector.Interfaces.MapInterface;
 import com.example.lezh1k.sensordatacollector.Presenters.MapPresenter;
 import com.mapbox.mapboxsdk.Mapbox;
@@ -57,12 +49,23 @@ import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 
+import org.json.JSONException;
+
 import java.io.File;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
+
+import mad.location.manager.lib.Commons.Utils;
+import mad.location.manager.lib.Interfaces.ILogger;
+import mad.location.manager.lib.Interfaces.LocationServiceInterface;
+import mad.location.manager.lib.Loggers.GeohashRTFilter;
+import mad.location.manager.lib.SensorAux.SensorCalibrator;
+import mad.location.manager.lib.Services.ServicesHelper;
+import mad.location.manager.lib.Services.Settings;
 
 public class MainActivity extends AppCompatActivity implements LocationServiceInterface, MapInterface, ILogger {
 
@@ -70,17 +73,23 @@ public class MainActivity extends AppCompatActivity implements LocationServiceIn
 
     private String xLogFolderPath;
     private static SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+
+
     class ChangableFileNameGenerator implements FileNameGenerator {
         private String fileName;
+
         public void setFileName(String fileName) {
             this.fileName = fileName;
         }
+
         public ChangableFileNameGenerator() {
         }
+
         @Override
         public boolean isFileNameChangeable() {
             return true;
         }
+
         @Override
         public String generateFileName(int logLevel, long timestamp) {
             return fileName;
@@ -88,6 +97,7 @@ public class MainActivity extends AppCompatActivity implements LocationServiceIn
     }
 
     ChangableFileNameGenerator xLogFileNameGenerator = new ChangableFileNameGenerator();
+
     public void initXlogPrintersFileName() {
         sdf.setTimeZone(TimeZone.getDefault());
         String dateStr = sdf.format(System.currentTimeMillis());
@@ -112,6 +122,7 @@ public class MainActivity extends AppCompatActivity implements LocationServiceIn
         boolean needTerminate = false;
         long deltaT;
         Context owner;
+
         RefreshTask(long deltaTMs, Context owner) {
             this.owner = owner;
             this.deltaT = deltaTMs;
@@ -160,6 +171,7 @@ public class MainActivity extends AppCompatActivity implements LocationServiceIn
             }
         }
     }
+
     /*********************************************************/
 
     private MapPresenter m_presenter;
@@ -172,17 +184,28 @@ public class MainActivity extends AppCompatActivity implements LocationServiceIn
     private boolean m_isCalibrating = false;
     private RefreshTask m_refreshTask = new RefreshTask(1000l, this);
 
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
     }
 
+    Settings.LocationProvider provider = Settings.LocationProvider.GPS;
+
+
+
+    Boolean fusedOn= false;
+    Boolean gpsOn= false;
+
+
     private void set_isLogging(boolean isLogging) {
+        Button gpsProvider = (Button) findViewById(R.id.button_gps);
+        Button fusedProvider = (Button) findViewById(R.id.button_fused);
         Button btnStartStop = (Button) findViewById(R.id.btnStartStop);
         TextView tvStatus = (TextView) findViewById(R.id.tvStatus);
         Button btnCalibrate = (Button) findViewById(R.id.btnCalibrate);
-        Button gpsProvider = (Button) findViewById(R.id.button_gps);
-        Button fusedProvider = (Button) findViewById(R.id.button_fused);
+
+
         String btnStartStopText;
         String btnTvStatusText;
 
@@ -192,14 +215,12 @@ public class MainActivity extends AppCompatActivity implements LocationServiceIn
             m_presenter.start();
             m_geoHashRTFilter.stop();
             m_geoHashRTFilter.reset(this);
-            Settings.LocationProvider provider = Settings.LocationProvider.GPS;
-            if (gpsProvider.isSelected())
-            {
-                provider =   Settings.LocationProvider.GPS;
-            }
-            else if (fusedProvider.isSelected())
-            {
-                provider =  Settings.LocationProvider.FUSED;
+            if (gpsProvider.isSelected()) {
+                provider = Settings.LocationProvider.GPS;
+                gpsOn=true;
+            } else if (fusedProvider.isSelected()) {
+                provider = Settings.LocationProvider.FUSED;
+                fusedOn=true;
             }
             Settings.LocationProvider finalProvider = provider;
             ServicesHelper.getLocationService(this, value -> {
@@ -239,6 +260,7 @@ public class MainActivity extends AppCompatActivity implements LocationServiceIn
             ServicesHelper.getLocationService(this, value -> {
                 value.stop();
             });
+
         }
 
         if (btnStartStop != null)
@@ -249,6 +271,18 @@ public class MainActivity extends AppCompatActivity implements LocationServiceIn
         btnCalibrate.setEnabled(!isLogging);
         m_isLogging = isLogging;
     }
+
+
+    public Settings.LocationProvider getProvider() {
+        if(gpsOn){
+            return this.provider= Settings.LocationProvider.GPS;
+        }
+        if (fusedOn) {
+            return this.provider= Settings.LocationProvider.FUSED;
+        }
+        return this.provider;
+    }
+
 
     private void set_isCalibrating(boolean isCalibrating, boolean byUser) {
         Button btnStartStop = (Button) findViewById(R.id.btnStartStop);
@@ -277,6 +311,7 @@ public class MainActivity extends AppCompatActivity implements LocationServiceIn
     public void btnStartStop_click(View v) {
         set_isLogging(!m_isLogging);
     }
+
     public void btnCalibrate_click(View v) {
         set_isCalibrating(!m_isCalibrating, true);
     }
@@ -338,6 +373,7 @@ public class MainActivity extends AppCompatActivity implements LocationServiceIn
             defaultUEH.uncaughtException(thread, ex);
         }
     };
+
 
     @Override
     public void locationChanged(Location location) {
@@ -423,7 +459,7 @@ public class MainActivity extends AppCompatActivity implements LocationServiceIn
             progress.show();
 
             m_map.setStyleUrl(BuildConfig.lightMapStyle);
-            m_map.setStyleUrl(Style.SATELLITE_STREETS, new MapboxMap.OnStyleLoadedListener() {
+            m_map.setStyleUrl(Style.MAPBOX_STREETS, new MapboxMap.OnStyleLoadedListener() {
                 @Override
                 public void onStyleLoaded(String style) {
                     m_map.getUiSettings().setLogoEnabled(false);
@@ -436,7 +472,13 @@ public class MainActivity extends AppCompatActivity implements LocationServiceIn
                     int bottomMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, getResources().getDisplayMetrics());
                     m_map.getUiSettings().setCompassMargins(leftMargin, topMargin, rightMargin, bottomMargin);
                     ServicesHelper.addLocationServiceInterface(this_);
-                    m_presenter.getRoute();
+                    try {
+                        m_presenter.getRoute();
+                    } catch (JSONException e) {
+                        throw new RuntimeException(e);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
                     progress.dismiss();
                 }
             });

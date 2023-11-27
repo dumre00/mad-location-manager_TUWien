@@ -110,8 +110,8 @@
         app:layout_constraintTop_toBottomOf="@+id/tvStatus"
         mapbox:layout_constraintEnd_toEndOf="parent"
         mapbox:layout_constraintStart_toStartOf="parent"
-        mapbox:mapbox_cameraTargetLat="42.876583"
-        mapbox:mapbox_cameraTargetLng="74.588290"
+        mapbox:mapbox_cameraTargetLat="41.381073043650154"
+        mapbox:mapbox_cameraTargetLng="2.1229592825983605"
         mapbox:mapbox_cameraZoom="16"
         mapbox:mapbox_cameraZoomMax="19"
         mapbox:mapbox_cameraZoomMin="8" />
